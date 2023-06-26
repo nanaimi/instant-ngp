@@ -225,7 +225,7 @@ if (NGP_BUILD_WITH_OPTIX)
 endif()
 
 if (NGP_BUILD_WITH_PYTHON_BINDINGS)
-	find_package(Python 3.7 COMPONENTS Interpreter Development)
+	find_package(Python 3.9 COMPONENTS Interpreter Development)
 	if (Python_FOUND)
 		add_subdirectory("dependencies/pybind11")
 	endif()

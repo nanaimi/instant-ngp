@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import argparse
 import os
 import commentjson as json
@@ -16,6 +14,9 @@ from tqdm import tqdm
 
 import wandb
 
+import sys
+pyngp_path = '/cluster/home/jpostels/nnaimi/instant-ngp/build'
+sys.path.append(pyngp_path)
 import pyngp as ngp # noqa
 
 
@@ -50,13 +51,14 @@ def get_scene(scene):
 	return None
 
 if __name__ == "__main__":
+	print(python.__version__)
 	args = parse_args()
 
 	testbed = ngp.Testbed()
 	testbed.root_dir = ROOT_DIR
 
 	wandb.init(
-		project="instantNGP-4-Compression",
+	    project="instantNGP-4-Compression",
         name="test",
 		# track hyperparameters and run metadata
 		config=None
@@ -111,10 +113,10 @@ if __name__ == "__main__":
 			while testbed.frame():
 				if testbed.want_repl():
 					repl(testbed)
+
 				# What will happen when training is done?
 				if testbed.training_step >= n_steps:
 					break
-
         
 				# Update progress bar
 				if testbed.training_step < old_training_step or old_training_step == 0:
@@ -128,16 +130,16 @@ if __name__ == "__main__":
 					old_training_step = testbed.training_step
 					tqdm_last_update = now
                 
-                psnr = np.log(testbed.loss) * 10.0
+				psnr = np.log(testbed.loss) * 10.0
 
-                images=None
-                # images = wandb.Image(
-                #     image_array, 
-                #     caption="Top: Output, Bottom: Input"
-                # )
+				images=None
+				# images = wandb.Image(
+				#     image_array, 
+				#     caption="Top: Output, Bottom: Input"
+				# )
 
-                ## WandB logging
-                wandb.log({"loss": testbed.loss, "training_step": testbed.training_step, "psnr": psnr, "examples": images})
+				## WandB logging
+				wandb.log({"loss": testbed.loss, "training_step": testbed.training_step, "psnr": psnr, "examples": images})
 
 	if args.save_snapshot:
 		testbed.save_snapshot(args.save_snapshot, False)
