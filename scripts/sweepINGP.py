@@ -25,7 +25,6 @@ sys.path.append(pyngp_path)
 
 import pyngp as ngp # noqa
 
-
 def parse_args():
 	parser = argparse.ArgumentParser(description="Run instant neural graphics primitives with additional configuration & output options")
 
@@ -58,8 +57,29 @@ def get_scene(scene):
 			return scenes[scene]
 	return None
 
-if __name__ == "__main__":
-	args = parse_args()
+def update_config_file(filename):
+	with open(args.network, 'r+') as f:
+		config = json.load(f)
+		config['encoding']['n_features_per_level'] = wandb.config.get('encoding.n_features_per_level')
+		config['encoding']['log2_hashmap_size'] = wandb.config.get('encoding.log2_hashmap_size')
+		config['encoding']['base_resolution'] = wandb.config.get('encoding.base_resolution')
+		config['encoding']['n_levels'] = wandb.config.get('encoding.n_levels')
+		config['encoding']['per_level_scale'] = wandb.config.get('encoding.per_level_scale')
+		f.seek(0)        # <--- reset file position to the beginning
+		json.dump(config, f, indent=4)
+		f.truncate()     # remove remaining part
+
+def main(args):
+	
+
+	run = wandb.init(name=args.name,
+                    tags=["sweep", "five"],
+					entity="inrcompression",
+					project="instantNGP-4-Compression",
+					dir="/cluster/work/cvl/jpostels/nnaimi/wandb")
+
+    # overwrite the parameters with the ones provided by the sweep
+	update_config_file(args.network)
 
 	testbed = ngp.Testbed()
 	testbed.root_dir = ROOT_DIR
@@ -70,7 +90,6 @@ if __name__ == "__main__":
 
 	# Load the PNG image (converts the image from srgb to linear np array)
 	groundtruth = read_image(args.scene)
-	print("Groundtruth shape: ", groundtruth.shape)
 
 	for file in args.files:
 		print("files")
@@ -107,21 +126,13 @@ if __name__ == "__main__":
 	if testbed.mode == ngp.TestbedMode.Sdf:
 		setup_colored_sdf(testbed, args.scene)
 
-	config["logging_frequency"] = args.log_freq
-	config["logging_images"] = args.log_imgs
 	config["name"] = args.name
+	config["logging_images"] = args.log_imgs
+	config["logging_frequency"] = args.log_freq
+	config["n_params"] = testbed.n_params()
 	config["n_enc_params"] = testbed.n_encoding_params()
 	config["n_mlp_params"] = testbed.n_params() - testbed.n_encoding_params()
-	config["n_params"] = testbed.n_params()
-
-	wandb.init(
-        name=args.name,
-		entity="inrcompression",
-	    project="instantNGP-4-Compression",
-		dir="/cluster/work/cvl/jpostels/nnaimi/wandb",
-		tags=["sanity-check", "girlwpearl"],
-		config=config
-	)
+	wandb.config.update(config)
 
 	old_training_step = 0
 	n_steps = args.n_steps
@@ -160,15 +171,7 @@ if __name__ == "__main__":
 						# log images and training info
 						outname = os.path.join(args.screenshot_dir, args.scene + "_" + network_stem)
 						image = testbed.render(args.width or 1920, args.height or 1080, args.screenshot_spp, True)
-
-						# compute difference to previous INR
-						# diff = None
-						# if not image_previous is None:
-						# 	assert image.shape == image_previous.shape, "image and image_previous shapes not equal"
-						# 	diff = image - image_previous
-
-						# image_previous = np.copy(image)
-						
+				
 						assert image[:,:,:3].shape == groundtruth.shape, "image and groundtruth shapes not equal" 
 						residual = groundtruth - image[:,:,:3]
 						res_mean = np.mean(residual)
@@ -186,9 +189,8 @@ if __name__ == "__main__":
 									"psnr": psnr,
 									"elapsed_time": elapsed_time,
 									"encoded_image": wandb.Image(image),
-									# "residual": wandb.Image(residual),
-									# "res_mean": res_mean
-									}
+									"residual": wandb.Image(residual),
+									"res_mean": res_mean}
 					else:
 						# log training info only
 						log_dict = {"loss": np.log(testbed.loss) / np.log(10.0), 
@@ -197,7 +199,7 @@ if __name__ == "__main__":
 									"elapsed_time": elapsed_time}
 
 					# WandB logging
-					wandb.log(log_dict)		
+					wandb.log(log_dict)
 
 				# update tqdm
 				now = time.monotonic()
@@ -208,7 +210,7 @@ if __name__ == "__main__":
 					tqdm_last_update = now
 	
 	# Total training time
-	elapsed_time = (time.monotonic_ns() - start) * 1e-9
+	elapsed_time = (time.monotonic_ns() - start) * 1e-9	
 
 	if args.save_snapshot:
 		outfilename = os.path.splitext(os.path.split(args.scene)[1])[0] + "-" + time.strftime("%Y%m%d-%H%M%S")
@@ -248,5 +250,34 @@ if __name__ == "__main__":
 				"res_mean_b": res_mean_b
 				})
 
-	print("Exiting...")
+	run.finish()
 	
+if __name__ == "__main__":
+	args = parse_args()
+
+	path = "/cluster/home/jpostels/nnaimi/instant-ngp/configs/image/sweep-encoding.json"
+	with open(path, 'r') as f:
+		sweep_config = json.load(f)
+
+	# Define sweep config
+	sweep_configuration = {
+		'method': 'random',
+		'name': 'sweep-five',
+		'metric': {'goal': 'maximize', 'name': 'psnr'},
+		'parameters': sweep_config
+	}
+
+	print("sweep configured.")
+	# Initialize sweep by passing in config.
+	# (Optional) Provide a name of the project.
+	sweep_id = wandb.sweep(
+		sweep=sweep_configuration,
+		entity="inrcompression",
+		project='instantNGP-4-compression'
+	)
+
+	print("sweep instantiated.")
+
+	# Begin the sweep
+	wandb.agent(sweep_id, function=lambda : main(args), count=50)
+	print("sweep conducted.")
