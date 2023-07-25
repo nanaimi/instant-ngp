@@ -1,0 +1,25 @@
+{
+    "encoding.n_features_per_level": {
+        "values": [1,2,4]
+    },
+    "encoding.log2_hashmap_size": {
+        "max": 14,
+        "min": 10,
+        "distribution": "int_uniform"
+    },
+    "encoding.base_resolution": {
+        "max": 512,
+        "min": 4,
+        "distribution": "int_uniform"
+    },
+    "encoding.n_levels": {
+        "max": 16,
+        "min": 1,
+        "distribution": "int_uniform"
+    },
+    "encoding.per_level_scale": {
+        "distribution": "normal", 
+        "mu": 1.8,
+        "sigma": 0.4
+    }
+}
