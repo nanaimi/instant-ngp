@@ -449,6 +449,7 @@ public:
 	size_t n_params();
 	size_t first_encoder_param();
 	size_t n_encoding_params();
+	size_t n_encoding_level_params(const int level);
 
 #ifdef NGP_PYTHON
 	pybind11::dict compute_marching_cubes_mesh(ivec3 res3d = ivec3(128), BoundingBox aabb = BoundingBox{vec3(0.0f), vec3(1.0f)}, float thresh=2.5f);
