@@ -3515,6 +3515,15 @@ size_t Testbed::n_encoding_params() {
 	return n_params() - first_encoder_param();
 }
 
+size_t Testbed::n_encoding_level_params(const int level) {
+	auto enc = dynamic_cast<GridEncoding<network_precision_t>*>(m_encoding.get());
+	uint32_t n_levels = enc->level_n_params(level);
+	return n_levels;
+}
+
+// nlohmann::json
+// auto config = load_network_config(path);
+
 size_t Testbed::first_encoder_param() {
 	if (!m_network) {
 		return 0;
@@ -4651,6 +4660,7 @@ void Testbed::gather_histograms() {
 
 		int numquant = 0;
 		m_quant_percent = float(numquant * 100) / (float)n_encoding_params;
+
 		if (m_histo_level < m_n_levels) {
 			size_t nperlevel = hg_enc->level_n_params(m_histo_level);
 			const float* d = grid.data() + hg_enc->level_params_offset(m_histo_level);
