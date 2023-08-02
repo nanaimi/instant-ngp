@@ -160,6 +160,12 @@ def read_image(file):
 			img = srgb_to_linear(img)
 	return img
 
+def unmultiply_alpha(img):
+	assert img.shape[2] == 4, "image does not contain alpha channel to unmultiply"
+	unmultiplied_img = np.copy(img)
+	unmultiplied_img[...,0:3] = np.divide(unmultiplied_img[...,0:3], unmultiplied_img[...,3:4], out=np.zeros_like(unmultiplied_img[...,0:3]), where=unmultiplied_img[...,3:4] != 0)
+	return unmultiplied_img
+
 def write_image(file, img, quality=95):
 	if os.path.splitext(file)[1] == ".bin":
 		if img.shape[2] < 4:
@@ -169,10 +175,11 @@ def write_image(file, img, quality=95):
 			f.write(img.astype(np.float16).tobytes())
 	else:
 		if img.shape[2] == 4:
-			img = np.copy(img)
+			img = unmultiply_alpha(img)
+			img = linear_to_srgb(img[...,0:3])
 			# Unmultiply alpha
-			img[...,0:3] = np.divide(img[...,0:3], img[...,3:4], out=np.zeros_like(img[...,0:3]), where=img[...,3:4] != 0)
-			img[...,0:3] = linear_to_srgb(img[...,0:3])
+			# img[...,0:3] = np.divide(img[...,0:3], img[...,3:4], out=np.zeros_like(img[...,0:3]), where=img[...,3:4] != 0)
+			# img[...,0:3] = linear_to_srgb(img[...,0:3])
 		else:
 			img = linear_to_srgb(img)
 		write_image_imageio(file, img, quality)
