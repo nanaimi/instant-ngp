@@ -21,3 +21,4 @@ imgui.ini
 wandb/
 .ipynb_checkpoints/
 *.png
+*.bin
