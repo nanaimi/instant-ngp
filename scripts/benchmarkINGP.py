@@ -119,7 +119,7 @@ if __name__ == "__main__":
 		entity="inrcompression",
 	    project="instantNGP-4-Compression",
 		dir="/cluster/work/cvl/jpostels/nnaimi/wandb",
-		tags=["sanity-check", "girlwpearl"],
+		tags=["test", "default-setting"],
 		config=config
 	)
 
@@ -215,6 +215,7 @@ if __name__ == "__main__":
 		testbed.save_snapshot(args.save_snapshot + "/" + outfilename + ".ingp", False)
 	
 	image = None
+	outname = None
 	if args.screenshot_dir:
 		outfilename = os.path.splitext(os.path.split(args.scene)[1])[0]
 		outname = os.path.join(args.screenshot_dir, outfilename + "_" + network_stem)
@@ -223,6 +224,7 @@ if __name__ == "__main__":
 		if os.path.dirname(outname) != "":
 			os.makedirs(os.path.dirname(outname), exist_ok=True)
 		write_image(outname + ".png", image)
+
 	
 	residual = groundtruth - image[:, :, :3]
 	res_mean = np.mean(residual)
@@ -240,7 +242,7 @@ if __name__ == "__main__":
 				"psnr": psnr,
 				"training_step": testbed.training_step, 
 				"elapsed_time": elapsed_time,
-				"encoded_image": wandb.Image(image),
+				"encoded_image": wandb.Image(outname + ".png"),
 				"residual": wandb.Image(residual),
 				"res_mean": res_mean,
 				"res_mean_r": res_mean_r,

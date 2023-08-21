@@ -73,7 +73,7 @@ def main(args):
 	
 
 	run = wandb.init(name=args.name,
-                    tags=["sweep", "five"],
+                    tags=["sweep", "pca-study"],
 					entity="inrcompression",
 					project="instantNGP-4-Compression",
 					dir="/cluster/work/cvl/jpostels/nnaimi/wandb")
@@ -173,24 +173,31 @@ def main(args):
 						image = testbed.render(args.width or 1920, args.height or 1080, args.screenshot_spp, True)
 				
 						assert image[:,:,:3].shape == groundtruth.shape, "image and groundtruth shapes not equal" 
-						residual = groundtruth - image[:,:,:3]
+						residual = groundtruth - unmultiply_alpha(image)[:,:,:3]
+
 						res_mean = np.mean(residual)
+						res_mean_r = np.mean(residual[:,:,0])
+						res_mean_g = np.mean(residual[:,:,1])
+						res_mean_b = np.mean(residual[:,:,2])
 
 						if os.path.dirname(outname) != "":
 							os.makedirs(os.path.dirname(outname), exist_ok=True)
 						
-						write_image(outname + ".png", image)
-
-						image = linear_to_srgb(image) 
-						residual = linear_to_srgb(residual)
+						# write_image(outname + ".png", image)
+						# image = linear_to_srgb(image) 
+						# residual = linear_to_srgb(residual)
 
 						log_dict = {"loss": np.log(testbed.loss) / np.log(10.0), 
 									"training_step": testbed.training_step, 
 									"psnr": psnr,
 									"elapsed_time": elapsed_time,
-									"encoded_image": wandb.Image(image),
-									"residual": wandb.Image(residual),
-									"res_mean": res_mean}
+									# "encoded_image": wandb.Image(image),
+									# "residual": wandb.Image(residual),
+									"res_mean": res_mean,
+									"res_mean_r": res_mean_r,
+									"res_mean_g": res_mean_g,
+									"res_mean_b": res_mean_b
+									}
 					else:
 						# log training info only
 						log_dict = {"loss": np.log(testbed.loss) / np.log(10.0), 
@@ -217,6 +224,8 @@ def main(args):
 		testbed.save_snapshot(args.save_snapshot + "/" + outfilename + ".ingp", False)
 	
 	image = None
+	residual = None
+	outname = None
 	if args.screenshot_dir:
 		outfilename = os.path.splitext(os.path.split(args.scene)[1])[0]
 		outname = os.path.join(args.screenshot_dir, outfilename + "_" + network_stem)
@@ -224,17 +233,16 @@ def main(args):
 		image = testbed.render(args.width or 1920, args.height or 1080, args.screenshot_spp, True)
 		if os.path.dirname(outname) != "":
 			os.makedirs(os.path.dirname(outname), exist_ok=True)
-		write_image(outname + ".png", image)
-	
-	residual = groundtruth - image[:, :, :3]
-	res_mean = np.mean(residual)
+		write_image(outname + "_image.png", image)
+		residual = groundtruth - unmultiply_alpha(image)[...,:3]
+		write_image(outname + "_residual.png", residual)
+		im_plus_residual = residual + unmultiply_alpha(image)[...,:3]
+		write_image(outname + "_residual+image.png", im_plus_residual)
 
+	res_mean = np.mean(residual)
 	res_mean_r = np.mean(residual[:,:,0])
 	res_mean_g = np.mean(residual[:,:,1])
 	res_mean_b = np.mean(residual[:,:,2])
-
-	image = linear_to_srgb(image)
-	residual = linear_to_srgb(residual)
 
 	psnr = -10.0 * np.log(testbed.loss) / np.log(10.0)
 
@@ -242,8 +250,9 @@ def main(args):
 				"psnr": psnr,
 				"training_step": testbed.training_step, 
 				"elapsed_time": elapsed_time,
-				"encoded_image": wandb.Image(image),
-				"residual": wandb.Image(residual),
+				"encoded_image": wandb.Image(outname + "_image.png"),
+				"residual": wandb.Image(outname + "_residual.png"),
+				"residual_plus_image": wandb.Image(outname + "_residual+image.png"),
 				"res_mean": res_mean,
 				"res_mean_r": res_mean_r,
 				"res_mean_g": res_mean_g,
@@ -262,7 +271,7 @@ if __name__ == "__main__":
 	# Define sweep config
 	sweep_configuration = {
 		'method': 'random',
-		'name': 'sweep-five',
+		'name': 'sweep-pca-study',
 		'metric': {'goal': 'maximize', 'name': 'psnr'},
 		'parameters': sweep_config
 	}
@@ -279,5 +288,5 @@ if __name__ == "__main__":
 	print("sweep instantiated.")
 
 	# Begin the sweep
-	wandb.agent(sweep_id, function=lambda : main(args), count=50)
+	wandb.agent(sweep_id, function=lambda : main(args), count=200)
 	print("sweep conducted.")
