@@ -9,7 +9,7 @@
         "decay_base": 0.33,
         "nested": {
             "otype": "Adam",
-            "learning_rate": 0.002,
+            "learning_rate": 0.001,
             "beta1": 0.9,
             "beta2": 0.99,
             "epsilon": 1e-15,
@@ -18,16 +18,16 @@
     },
     "encoding": {
         "otype": "HashGrid",
-        "n_levels": 7,
-        "n_features_per_level": 1,
-        "log2_hashmap_size": 12,
-        "base_resolution": 295,
-        "per_level_scale": 1.301132556857774
+        "n_levels": 16,
+        "n_features_per_level": 2,
+        "log2_hashmap_size": 9,
+        "base_resolution": 28,
+        "per_level_scale": 1.4
     },
     "network": {
         "otype": "FullyFusedMLP",
         "activation": "ReLU",
-        "output_activation": "Sigmoid",
+        "output_activation": "None",
         "n_neurons": 64,
         "n_hidden_layers": 2
     }
