@@ -1,5 +1,5 @@
 # import itertools
-from typing import Tuple, TypeVar
+from typing import Tuple, TypeVar, Union
 import os
 import copy
 import numpy as np
@@ -21,19 +21,15 @@ PROCESSING_DTYPE = np.float32
 
 # Implement uniform, asymmetric, uint8 bit quantization
 def quantization_uniform_asymmetric(
-    x: np.ndarray, bits: int = 8, zero_point_rounding: bool = False
+    x: Union[Vector[np.float16], Vector[np.float32]],
+    bits: int = 8,
+    zero_point_rounding: bool = False,
 ) -> Tuple[Vector[np.uint16], np.float32, np.float32, np.dtype]:
     """Uniformly quantizes x to bits number of bits in asymmetric mode.
     Args:
-        x: Input array.
+        x: Input array. Either float16 or float32.
         bits: Number of bits to quantize to.
-    Returns:
-        x_q: Quantized array.
-        q_x: Quantization factor.
-        zpx: Zero-point.
-        dtype: original dtype of x.
-    Raises:
-        ValueError: If bits is not between 1 and 16. Otherwise quantization overflows.
+        zero_point_rounding: If True, zero-point rounding is used.
     """
     x_dtype = x.dtype
     if bits > 16 or bits < 1:
