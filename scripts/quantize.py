@@ -1,9 +1,13 @@
 # import itertools
 from typing import Tuple
+import os
+import copy
+import numpy as np
+
+from utils import *  # noqa
 
 # import jax
 # import jax.numpy as jnp
-import numpy as np
 
 MAX_BYTE = 2.0**8 - 1.0  # 255.0
 PROCESSING_DTYPE = np.float32
@@ -51,6 +55,33 @@ def dequantize_uniform_asymmetric(
     x_dq = np.add(x_q, zpx, dtype=PROCESSING_DTYPE) / q_x
     x_dq = x_dq.astype(dtype)
     return x_dq
+
+
+def quantize_snapshot(snapshot_path: str, save_dir: str, bits: int = 8) -> None:
+    """Quantize snapshot and save it to save_dir.
+
+    Args:
+        snapshot_path: Path to snapshot.
+        save_dir: Directory to save quantized snapshot.
+        bits: Number of bits to quantize to.
+    """
+    snapshot = deserialize_ingp(snapshot_path)  # noqa
+    cp_snapshot = copy.deepcopy(snapshot)
+    dtype = (
+        np.float32 if cp_snapshot["snapshot"]["params_type"] == "float" else np.float16
+    )
+    params_array = np.frombuffer(cp_snapshot["snapshot"]["params_binary"], dtype=dtype)
+
+    quant_tuple = quantization_uniform_asymmetric(params_array, bits=bits)
+    deq_weights = dequantize_uniform_asymmetric(*quant_tuple)
+    cp_snapshot["snapshot"]["params_binary"] = deq_weights.tobytes()
+
+    packed_snapshot = compress_and_serialize_ingp(cp_snapshot, compress=True)  # noqa
+
+    # save quantized snapshot
+    filename = os.path.basename(snapshot_path)[: -len(".ingp")] + f"_{bits}bit.ingp"
+    with open(f"{save_dir}/{filename}", "wb") as f:
+        f.write(packed_snapshot)
 
 
 # Taken from:

@@ -13,7 +13,6 @@ import wandb
 sys.path.append(os.path.abspath("/Users/nasib/code/instant-ngp/scripts"))
 from scenes import *  # noqa
 
-
 T_co = TypeVar("T_co", bound=np.generic, covariant=True)
 
 Vector = np.ndarray[Tuple[int], np.dtype[T_co]]
@@ -131,6 +130,15 @@ def hypothetical_bpp_boundary(
         (n_hidden_layers - 1) * (n_neurons**2) + n_neurons * 3 + 2 * n_neurons
     )
     return (nr_mlp_params * 8) / (width * height)
+
+
+# def hypotheical_bpp_boundary(
+#     n_hidden_layers: int = 2, n_neurons: int = 64, width: int = 512, height: int = 768
+# ):
+#     nr_mlp_params = (
+#         (n_hidden_layers - 1) * (n_neurons**2) + n_neurons * 3 + 2 * n_neurons
+#     )
+#     return (nr_mlp_params * 8) / (width * height)
 
 
 # Encoding parameter calculations
@@ -349,9 +357,29 @@ def statistics_of_params(param_vector: np.ndarray) -> Tuple[float, ...]:
     return x_min, x_max, x_std, x_mean, x_median
 
 
-# def serialize_ingp():
-#     """Serialize to .ingp file."""
-#     pass
+def compress_and_serialize_ingp(
+    snapshot: Dict[str, Any],
+    compress: bool = True,
+    compression_level: int = zlib.Z_DEFAULT_COMPRESSION,
+) -> bytes:
+    """Compress and serialize to .ingp snapshot.
+
+    Args:
+        snapshot (Dict[str, Any]): snapshot to serialize.
+        compress (bool, optional): whether to compress the snapshot. Defaults to True.
+        compression_level (int, optional): compression level. Defaults to zlib default.
+
+    Returns:
+        bytes: serialized snapshot.
+    """
+    serialized_snapshot = msgpack.packb(snapshot, use_bin_type=True)
+    packed_snapshot = serialized_snapshot
+    if compress:
+        compressed_snapshot = zlib.compress(
+            serialized_snapshot, level=compression_level
+        )
+        packed_snapshot = compressed_snapshot
+    return packed_snapshot
 
 
 def deserialize_ingp(snapshot_path: str) -> Dict[str, Any]:
@@ -366,8 +394,11 @@ def deserialize_ingp(snapshot_path: str) -> Dict[str, Any]:
     with open(snapshot_path, "rb", buffering=0) as snapshot_file:
         # Read the zlib-compressed data.
         compressed_data = snapshot_file.read()
-        # Decompress the zlib-compressed data.
-        decompressed_data = zlib.decompress(compressed_data, wbits=31)
+        # Decompress the zlib-compressed data. For most typical use cases, use the
+        # default value for wbits (MAX_WBITS | 16 (or simply -15)). This setting tells
+        # zlib to automatically detect the window size based on the zlib or gzip header
+        # present in the compressed data.
+        decompressed_data = zlib.decompress(compressed_data, wbits=zlib.MAX_WBITS | 16)
         # Deserialize the MessagePack data.
         result = msgpack.unpackb(decompressed_data, raw=False)
         return result
