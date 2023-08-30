@@ -6,7 +6,7 @@ import numpy as np
 
 from utils import compress_and_serialize_ingp, deserialize_ingp  # noqa
 
-T_co = TypeVar("T_co", bound=np.generic, covariant=True)
+T_co = TypeVar('T_co', bound=np.generic, covariant=True)
 
 Vector = np.ndarray[Tuple[int], np.dtype[T_co]]
 Matrix = np.ndarray[Tuple[int, int], np.dtype[T_co]]
