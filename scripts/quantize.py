@@ -1,10 +1,16 @@
 # import itertools
-from typing import Tuple
+from typing import Tuple, TypeVar
 import os
 import copy
 import numpy as np
 
-from utils import *  # noqa
+from utils import compress_and_serialize_ingp, deserialize_ingp  # noqa
+
+T_co = TypeVar("T_co", bound=np.generic, covariant=True)
+
+Vector = np.ndarray[Tuple[int], np.dtype[T_co]]
+Matrix = np.ndarray[Tuple[int, int], np.dtype[T_co]]
+Tensor = np.ndarray[Tuple[int, ...], np.dtype[T_co]]
 
 # import jax
 # import jax.numpy as jnp
@@ -15,8 +21,8 @@ PROCESSING_DTYPE = np.float32
 
 # Implement uniform, asymmetric, uint8 bit quantization
 def quantization_uniform_asymmetric(
-    x: np.ndarray, bits: int = 8
-) -> Tuple[np.uint16, np.float32, np.float32, np.dtype]:
+    x: np.ndarray, bits: int = 8, zero_point_rounding: bool = False
+) -> Tuple[Vector[np.uint16], np.float32, np.float32, np.dtype]:
     """Uniformly quantizes x to bits number of bits in asymmetric mode.
     Args:
         x: Input array.
@@ -35,14 +41,13 @@ def quantization_uniform_asymmetric(
     MAX_NUM = np.add(2.0**bits, -1.0, dtype=PROCESSING_DTYPE)
     x_min, x_max = x.min(), x.max()
     q_x = MAX_NUM / (x_max - x_min)
-    zpx = x_min * q_x
-    # zpx = np.round(x_min * q_x)
+    zpx = np.round(x_min * q_x) if zero_point_rounding else x_min * q_x
     x_q = np.round(q_x * x.astype(PROCESSING_DTYPE) - zpx).astype(np.uint16)
     return x_q, q_x, zpx, x_dtype
 
 
 def dequantize_uniform_asymmetric(
-    x_q: np.ndarray, q_x: np.ndarray, zpx: np.ndarray, dtype: np.dtype
+    x_q: Vector[np.uint16], q_x: np.float32, zpx: np.float32, dtype: np.dtype
 ) -> np.ndarray:
     """Dequantizes x_q to float32.
     Args:
@@ -65,7 +70,7 @@ def quantize_snapshot(snapshot_path: str, save_dir: str, bits: int = 8) -> None:
         save_dir: Directory to save quantized snapshot.
         bits: Number of bits to quantize to.
     """
-    snapshot = deserialize_ingp(snapshot_path)  # noqa
+    snapshot = deserialize_ingp(snapshot_path)
     cp_snapshot = copy.deepcopy(snapshot)
     dtype = (
         np.float32 if cp_snapshot["snapshot"]["params_type"] == "float" else np.float16
@@ -73,10 +78,10 @@ def quantize_snapshot(snapshot_path: str, save_dir: str, bits: int = 8) -> None:
     params_array = np.frombuffer(cp_snapshot["snapshot"]["params_binary"], dtype=dtype)
 
     quant_tuple = quantization_uniform_asymmetric(params_array, bits=bits)
-    deq_weights = dequantize_uniform_asymmetric(*quant_tuple)
+    deq_weights = dequantize_uniform_asymmetric(*quant_tuple)  # noqa
     cp_snapshot["snapshot"]["params_binary"] = deq_weights.tobytes()
 
-    packed_snapshot = compress_and_serialize_ingp(cp_snapshot, compress=True)  # noqa
+    packed_snapshot = compress_and_serialize_ingp(cp_snapshot, compress=True)
 
     # save quantized snapshot
     filename = os.path.basename(snapshot_path)[: -len(".ingp")] + f"_{bits}bit.ingp"
