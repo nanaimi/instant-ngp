@@ -22,9 +22,9 @@
 	},
 	"encoding": {
 		"otype": "HashGrid",
-		"n_levels": 16,
-		"n_features_per_level": 2,
-		"log2_hashmap_size": 24,
+		"n_levels": 4,
+		"n_features_per_level": 4,
+		"log2_hashmap_size": 14,
 		"base_resolution": 16
 	},
 	"network": {
