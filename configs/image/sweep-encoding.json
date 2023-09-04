@@ -1,7 +1,15 @@
 {
     "encoding.base_resolution": {
-        "max": 265,
-        "min": 4,
-        "distribution": "int_uniform"
+        "values": [
+            2,
+            4,
+            8,
+            16,
+            32,
+            64,
+            128,
+            256,
+            512
+        ]
     }
 }
