@@ -137,9 +137,10 @@ def update_config_file(filename):
 
 
 def main(args):
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
     run = wandb.init(
-        name=args.name,
-        tags=["sweep", "pca-study"],
+        name=f"{args.name}-{timestamp}",
+        tags=["sweep", "base-res-rate-distortion"],
         entity="inrcompression",
         project="instantNGP-4-Compression",
         dir="/cluster/work/cvl/jpostels/nnaimi/wandb",
@@ -298,7 +299,7 @@ def main(args):
         outfilename = (
             os.path.splitext(os.path.split(args.scene)[1])[0]
             + "-"
-            + time.strftime("%Y%m%d-%H%M%S")
+            + timestamp
         )
         testbed.save_snapshot(args.save_snapshot + "/" + outfilename + ".ingp", False)
 
